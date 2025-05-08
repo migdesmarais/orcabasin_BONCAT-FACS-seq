@@ -1,17 +1,22 @@
 ## Install MEGAHIT
+```
 conda create --name megahit
 conda activate megahit
 conda install -c bioconda megahit
 megahit --version
-
+```
 ## Make directory
+```
 mkdir -p megahit_assemblies
+```
 
 ## Make script
+```
 nano run_megahit_all.sh
+```
 
 ## Script:
-
+```
 for r1 in *_paired_R1.fastq.gz; do
   base=$(echo "$r1" | sed 's/_paired_R1.fastq.gz//')
   r2="${base}_paired_R2.fastq.gz"
@@ -26,20 +31,22 @@ for r1 in *_paired_R1.fastq.gz; do
     --presets meta-sensitive \
     --num-cpu-threads 20
 done
-
+```
 ## Make it executable
+```
 chmod +x run_megahit_all.sh
-
+```
 ## Run it
+```
 ./run_megahit_all.sh
-
+```
 ## Check assembly quality with quast
-
+```
 conda create --name quast
 conda activate quast
 conda install -c bioconda quast
 quast --version
-
+```
 
 
 
