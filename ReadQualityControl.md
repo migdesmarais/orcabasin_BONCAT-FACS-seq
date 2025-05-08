@@ -80,3 +80,22 @@ for file in $(cat samples.txt); do
     LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36
 done
 ```
+
+## Run post-QC fastqc
+```
+fastqc *fastq.gz
+```
+
+##	Download and visualize QC files
+```
+scp -r mdesmarais@fram.ucsd.edu:/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/post_fastqc ~/Downloads/
+```
+
+##	Calculate how many reads are leftover in each paried fastq files
+```
+echo -e "Filename\tReads" > paired_read_counts.tsv
+for f in *_paired_*.fastq.gz; do
+  count=$(zcat "$f" | wc -l | awk '{print $1/4}')
+  echo -e "$f\t$count" >> paired_read_counts.tsv
+done
+```
