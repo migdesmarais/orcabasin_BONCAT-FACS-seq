@@ -1,5 +1,12 @@
-```{upload in situ dereplicated MAGs from Rebecca to server}
+## {upload in situ dereplicated MAGs from Rebecca to server}
+```
 scp -r /Users/migueldesmarais/Downloads/dereplicated_genomes mdesmarais@fram.ucsd.edu:/scratch/mdesmarais/OB_BONCAT-FACS-SEQ
+```
+
+## {upload metadata to server}
+```
+scp ~/Documents/ORCA_results/OB_BONCAT-facs-seq/sample_metadata.xlsx \
+mdesmarais@fram.ucsd.edu:/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/
 ```
 
 ## Access RStudio environment @ http://fram.ucsd.edu:8787
