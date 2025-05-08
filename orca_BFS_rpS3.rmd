@@ -1,1 +1,36 @@
+```{upload in situ dereplicated MAGs from Rebecca to server}
+scp -r /Users/migueldesmarais/Downloads/dereplicated_genomes mdesmarais@fram.ucsd.edu:/scratch/mdesmarais/OB_BONCAT-FACS-SEQ
+```
+
+## Access RStudio environment @ http://fram.ucsd.edu:8787
+Log in with credentials
+
+---
+title: "orca_BFS_rpS3"
+output: html_document
+date: "2025-05-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Set Up Working Environment
+```{r load libraries, message=FALSE, warning=FALSE}
+library(tidyr)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(data.table)
+library(stringr)
+library(Biostrings)
+library(RColorBrewer)
+```
+
+```{r set root directories}
+rootdir = "/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/"
+oakdir = paste0(rootdir, "raw_reads/")
+seqdir = paste0(rootdir, "reads/")
+```
+
 
