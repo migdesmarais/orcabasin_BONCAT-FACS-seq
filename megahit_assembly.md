@@ -42,10 +42,15 @@ chmod +x run_megahit_all.sh
 ```
 ## Check assembly quality with quast
 ```
-conda create --name quast
-conda activate quast
+conda create --name quast_env
+conda activate quast_env
 conda install -c bioconda quast
 quast --version
+```
+
+```
+quast -o QC *_contigs.fa
+scp -r migdesmarais@fram.ucsd.edu:/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/megahit_assemblies/contigs/QC /Users/migueldesmarais/Downloads
 ```
 
 
