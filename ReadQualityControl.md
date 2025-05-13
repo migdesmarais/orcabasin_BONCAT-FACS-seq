@@ -59,7 +59,6 @@ scp -r mdesmarais@fram.ucsd.edu:/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/raw_reads
 
 ```
 conda activate trimmomatic_env
-for file in `cat samples.txt`; do trimmomatic PE -phred33 -threads 12 ${file}_R1_001.fastq.gz ${file}_R2_001.fastq.gz ILLUMINACLIP:/groups/spart2020/adapters.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36; done
 ```
 
 ```
