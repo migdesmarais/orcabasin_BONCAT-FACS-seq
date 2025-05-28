@@ -11,14 +11,14 @@ Log in with credentials
 ---
 title: "orca_BFS_rpS3"
 output: html_document
-date: "2025-05-07"
+date: "2025-05-08"
 ---
 
+# Set Up Working Environment
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-#Set Up Working Environment
 ```{r load libraries, message=FALSE, warning=FALSE}
 library(tidyr)
 library(readr)
@@ -28,6 +28,7 @@ library(data.table)
 library(stringr)
 library(Biostrings)
 library(RColorBrewer)
+library(readxl)
 ```
 
 ```{r set root directories}
@@ -36,4 +37,14 @@ oakdir = paste0(rootdir, "raw_reads/")
 seqdir = paste0(rootdir, "reads/")
 ```
 
+```{r define sample lists}
 
+BONCAT_sorts <- unique(gsub("^(OBNC).*|^(OB\\d+).*", "\\1\\2", grep("^OB", list.files(path = paste0(rootdir, "raw_reads/")), value = TRUE)))
+in_situ_samples <- gsub("\\.fa$", "", list.files(insitu_mags))
+
+assembly_dir = paste0(rootdir, "megahit_assemblies/contigs")
+insitu_mags_dir = paste0(rootdir, "dereplicated_genomes/")
+
+BONCAT_sorts_metadata = read_xlsx(paste0(rootdir, "sample_metadata.xlsx"))
+insitu_mags_metadata = read_xlsx(paste0(insitu_mags_dir, "mag_metadata.xlsx"))
+```
