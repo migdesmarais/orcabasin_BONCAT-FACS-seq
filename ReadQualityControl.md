@@ -90,6 +90,44 @@ fastqc *fastq.gz
 scp -r mdesmarais@fram.ucsd.edu:/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/post_fastqc ~/Downloads/
 ```
 
+## Use NC to decontaminate reads DID NOT WORK
+```
+conda create -n bbtools_env -c agbiome bbtools -y
+conda activate bbtools_env
+
+cat OBNC_S54_L003_*.fastq.gz > OBNC_combined.fastq.gz
+
+# check sizes
+ls -lh OBNC_*.fastq.gz
+
+for f in OBNC_S54_L003_*.fastq.gz; do
+    echo -n "$f: "
+    echo $(( $(zcat "$f" | wc -l) / 4 ))
+done
+
+# create kmers
+kmercountexact.sh in=OBNC_combined.fastq.gz out=OBNC_kmers.fa k=31
+
+#use kmers to decontam
+
+mkdir -p ../clean_reads
+mkdir -p ../clean_reads/stats
+
+for r1 in *_paired_R1.fastq.gz; do
+  r2="${r1/_R1.fastq.gz/_R2.fastq.gz}"
+  base=$(basename "$r1" _paired_R1.fastq.gz)
+
+  bbduk.sh \
+    in1="$r1" in2="$r2" \
+    out1="../clean_reads/${base}_clean_R1.fastq.gz" \
+    out2="../clean_reads/${base}_clean_R2.fastq.gz" \
+    ref=OBNC_kmers.fa \
+    k=31 hdist=1 mink=11 ktrim=r ftm=5 \
+    stats="../clean_reads/stats/${base}_bbduk_stats.txt" \
+    threads=8
+done
+```
+
 ##	Calculate how many reads are leftover in each paried fastq files
 ```
 echo -e "Filename\tReads" > paired_read_counts.tsv
