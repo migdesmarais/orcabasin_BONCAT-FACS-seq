@@ -5,6 +5,25 @@ scp ~/Documents/ORCA_results/OB_BONCAT-facs-seq/sample_metadata.xlsx \
 mdesmarais@fram.ucsd.edu:/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/
 ```
 
+## Install SingleM
+```
+curl -fsSL https://pixi.sh/install.sh | sh
+git clone https://github.com/wwood/singlem
+cd singlem
+pixi shell
+singlem -h
+lyrebird -h
+
+singlem data --output-directory singlem_db
+singlem list-markers --refpkg singlem_db
+```
+singlem search \
+  --sequences /path/to/your/contigs_or_MAGs/ \
+  --output_directory /path/to/output_folder/ \
+  --threads 16 \
+  --singlem_package /path/to/marker_package.smpkg
+
+
 ## Access RStudio environment @ http://fram.ucsd.edu:8787
 Log in with credentials
 
