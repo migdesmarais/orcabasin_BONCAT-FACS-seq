@@ -138,8 +138,10 @@ done
 ```
 
 ## Remove contaminants found in OBNC from the other reads and place in clean_reads folder
+## Map samples reads to OBNC contigs
 ```
-bowtie2-build OBNC_contigs.fa OBNC_index
+#need to clean header and produce index
+bowtie2-build OBNC_contigs.fa OBNC_clean_index
 
 for R1 in *_paired_R1.fastq.gz; do
   R2=${R1/_R1/_R2}
@@ -148,12 +150,12 @@ for R1 in *_paired_R1.fastq.gz; do
   echo "Mapping sample: $SAMPLE"
 
   bowtie2 --very-sensitive -p 12 \
-    -x /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/megahit_assemblies/contigs/OBNC_index \
+    -x /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/megahit_assemblies/contigs/OBNC_clean_index \
     -1 "$R1" -2 "$R2" \
-    -S "${SAMPLE}_OBNC.sam"
+    -S "${SAMPLE}_OBNC.sam" \
+    2> "logs/${SAMPLE}_bowtie2.log"
 done
 ```
-
 
 
 ## Convert SAM to BAM files
