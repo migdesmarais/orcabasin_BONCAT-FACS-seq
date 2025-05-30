@@ -158,29 +158,46 @@ done
 ```
 
 
-## Convert SAM to BAM files
+## Convert SAM to BAM files and index manually
 ```
-for SAM in *_OBNC.sam; do
-  SAMPLE=$(echo "$SAM" | grep -oE 'OB[0-9]+|OBNC')
-  echo "Converting $SAMPLE to sorted BAM..."
+samtools view -@ 12 -bS OBNC_OBNC.sam | samtools sort -@ 12 -o OBNC_OBNC.sorted.bam
+samtools index OBNC_OBNC.sorted.bam
+```
 
-  samtools view -bS "$SAM" | samtools sort -o "${SAMPLE}_OBNC.sorted.bam"
-  samtools index "${SAMPLE}_OBNC.sorted.bam"
+
+## Extract mapped (contaminants) and unmapped (clean) reads + summary
+```
+echo -e "Sample\tTotal_Reads\tClean_Reads\tContaminant_Reads" > /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/decontamination_summary.tsv
+
+for bam in /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/*_OBNC.sorted.bam; do
+    sample=$(basename "$bam" | cut -d'_' -f1)
+
+    R1=$(ls /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/${sample}_S*_L003_paired_R1.fastq.gz)
+    R2=$(ls /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/${sample}_S*_L003_paired_R2.fastq.gz)
+
+    echo "Processing $sample"
+
+    samtools view -F 4 "$bam" | cut -f 1 | sort | uniq > /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/${sample}_contaminant_ids.txt
+
+    filterbyname.sh in="$R1" in2="$R2" \
+        out=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/${sample}_contam_R1.fastq.gz \
+        out2=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/${sample}_contam_R2.fastq.gz \
+        names=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/${sample}_contaminant_ids.txt include=t overwrite=t
+
+    filterbyname.sh in="$R1" in2="$R2" \
+        out=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/${sample}_clean_R1.fastq.gz \
+        out2=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/${sample}_clean_R2.fastq.gz \
+        names=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/${sample}_contaminant_ids.txt include=f overwrite=t
+
+    total=$(zcat "$R1" | echo $((`wc -l` / 4)))
+    clean=$(zcat /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/${sample}_clean_R1.fastq.gz | echo $((`wc -l` / 4)))
+    removed=$((total - clean))
+
+    echo -e "${sample}\t${total}\t${clean}\t${removed}" >> /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/decontamination_summary.tsv
+
+    echo "  Total: $total | Clean: $clean | Removed: $removed"
 done
-```
 
-## Extract mapped (contaminants) and unmapped (clean) reads
-```
-for BAM in *_OBNC.sorted.bam; do
-  SAMPLE=$(echo "$BAM" | grep -oE 'OB[0-9]+|OBNC')
-  echo "Extracting reads for $SAMPLE..."
-
-  # Clean reads: both mates unmapped
-  samtools view -b -f 12 -F 256 "$BAM" > "${SAMPLE}_unmapped.bam"
-
-  # Contaminant reads: both mates mapped
-  samtools view -b -f 3 "$BAM" > "${SAMPLE}_mapped_contaminants.bam"
-done
 ```
 
 
