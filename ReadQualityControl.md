@@ -128,7 +128,7 @@ for r1 in *_paired_R1.fastq.gz; do
 done
 ```
 
-##	Calculate how many reads are leftover in each paried fastq files
+##	Calculate how many reads are leftover in each paired fastq files
 ```
 echo -e "Filename\tReads" > paired_read_counts.tsv
 for f in *_paired_*.fastq.gz; do
@@ -136,3 +136,36 @@ for f in *_paired_*.fastq.gz; do
   echo -e "$f\t$count" >> paired_read_counts.tsv
 done
 ```
+
+## Remove contaminants found in OBNC from the other reads and place in clean_reads folder
+```
+bowtie2-build OBNC_contigs.fa OBNC_index
+
+for R1 in *_paired_R1.fastq.gz; do
+  R2=${R1/_R1/_R2}
+  SAMPLE=$(echo "$R1" | grep -oE 'OB[0-9]+|OBNC')
+
+  echo "Mapping sample: $SAMPLE"
+
+  bowtie2 --very-sensitive -p 12 \
+    -x /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/megahit_assemblies/contigs/OBNC_index \
+    -1 "$R1" -2 "$R2" \
+    -S "${SAMPLE}_OBNC.sam"
+done
+
+
+
+
+
+
+for SAM in *_OBNC.sam; do
+  SAMPLE=$(echo "$SAM" | grep -oE 'OB[0-9]+|OBNC')
+  echo "Converting $SAMPLE to sorted BAM..."
+
+  samtools view -bS "$SAM" | samtools sort -o "${SAMPLE}_OBNC.sorted.bam"
+  samtools index "${SAMPLE}_OBNC.sorted.bam"
+done
+
+```
+
+
