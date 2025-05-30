@@ -17,9 +17,9 @@ nano run_megahit_all.sh
 
 ## Script:
 ```
-for r1 in *_paired_R1.fastq.gz; do
-  base=$(echo "$r1" | sed 's/_paired_R1.fastq.gz//')
-  r2="${base}_paired_R2.fastq.gz"
+for r1 in *_R1.fastq.gz; do
+  base=$(echo "$r1" | sed 's/_R1.fastq.gz//')
+  r2="${base}_R2.fastq.gz"
   outdir="megahit_assemblies/${base}"
 
   echo "Assembling $base..."
