@@ -63,3 +63,7 @@ coverm genome -1 clean_R1.fastq.gz -2 clean_R2.fastq.gz \
   --genome-fasta-directory MAGs/ --threads 12 --output-file coverm_abundance.tsv
 
 ```
+
+
+
+
