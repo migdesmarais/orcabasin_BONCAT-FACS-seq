@@ -152,12 +152,12 @@ for R1 in *_paired_R1.fastq.gz; do
     -1 "$R1" -2 "$R2" \
     -S "${SAMPLE}_OBNC.sam"
 done
+```
 
 
 
-
-
-
+## Convert SAM to BAM files
+```
 for SAM in *_OBNC.sam; do
   SAMPLE=$(echo "$SAM" | grep -oE 'OB[0-9]+|OBNC')
   echo "Converting $SAMPLE to sorted BAM..."
@@ -165,7 +165,20 @@ for SAM in *_OBNC.sam; do
   samtools view -bS "$SAM" | samtools sort -o "${SAMPLE}_OBNC.sorted.bam"
   samtools index "${SAMPLE}_OBNC.sorted.bam"
 done
+```
 
+## Extract mapped (contaminants) and unmapped (clean) reads
+```
+for BAM in *_OBNC.sorted.bam; do
+  SAMPLE=$(echo "$BAM" | grep -oE 'OB[0-9]+|OBNC')
+  echo "Extracting reads for $SAMPLE..."
+
+  # Clean reads: both mates unmapped
+  samtools view -b -f 12 -F 256 "$BAM" > "${SAMPLE}_unmapped.bam"
+
+  # Contaminant reads: both mates mapped
+  samtools view -b -f 3 "$BAM" > "${SAMPLE}_mapped_contaminants.bam"
+done
 ```
 
 
