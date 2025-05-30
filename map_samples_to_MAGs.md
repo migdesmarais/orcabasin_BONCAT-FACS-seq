@@ -37,10 +37,7 @@ done
 
 ```
 
-
-
-
-## Conver SAM to BAM?
+## Conver SAM to BAM
 ```
 for SAM in /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/MAG_mapping_sam/*.sam; do
   BAM=${SAM%.sam}.bam
@@ -57,12 +54,19 @@ for BAM in *.bam; do
 done
 ```
 
-## MAG abundance
+## MAG abundance - coverM
 ```
-coverm genome -1 clean_R1.fastq.gz -2 clean_R2.fastq.gz \
-  --genome-fasta-directory MAGs/ --threads 12 --output-file coverm_abundance.tsv
+coverm genome \
+  --bam-files /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/MAG_mapping_sam/*.bam \
+  --genome-fasta-directory /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/renamed_mags \
+  --threads 12 \
+  --methods relative_abundance \
+  --min-read-percent-identity 95 \
+  --min-read-aligned-percent 75 \
+  --output-file coverm_abundance.tsv
+```
 
-```
+
 
 
 
