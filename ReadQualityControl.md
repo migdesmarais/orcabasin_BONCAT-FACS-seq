@@ -197,7 +197,34 @@ for bam in /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/*_OBNC.sorted.bam; do
 
     echo "  Total: $total | Clean: $clean | Removed: $removed"
 done
-
 ```
 
+## Check taxonomy of reads/contaminants
+```
+mkdir -p kraken
+
+for idfile in *_contaminant_ids.txt; do
+    sample=$(basename "$idfile" _contaminant_ids.txt)
+
+    # Combine clean R1 and R2
+    cat ${sample}_clean_R1.fastq.gz ${sample}_clean_R2.fastq.gz > kraken/${sample}_clean_combined.fastq.gz
+
+    # Combine contaminant R1 and R2
+    cat ${sample}_contam_R1.fastq.gz ${sample}_contam_R2.fastq.gz > kraken/${sample}_contam_combined.fastq.gz
+done
+
+
+conda activate kraken_env
+
+for fq in *_combined.fastq.gz; do
+    sample=$(basename "$fq" .fastq.gz)
+
+    kraken2 --db /data_store/kraken_database \
+            --gzip-compressed \
+            --output - \
+            --use-names \
+            "$fq" | sed "s/^/${sample}\t/" >> all_samples.kraken
+done
+
+```
 
