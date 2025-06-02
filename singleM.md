@@ -17,7 +17,7 @@ export SINGLEM_METAPACKAGE_PATH=$/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/singlem/
 ```
 singlem pipe -1 /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/megahit_assemblies/contigs/*.fa \
  --taxonomic-profile /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/megahit_assemblies/contigs/singlem_output/boncat_taxonomic_profile.tsv \
- --taxonomic-profile-krona /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/megahit_assemblies/contigs/singlem_output/boncat_taxonomic_profile.krona.tsv  \
+ --taxonomic-profile-krona /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/megahit_assemblies/contigs/singlem_output/boncat_taxonomic_profile.krona.html  \
  --otu-table /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/megahit_assemblies/contigs/singlem_output/boncat_otu_table.tsv  \
  --threads 16 \
  --metapackage /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/singlem/singlem_db/S5.4.0.GTDB_r226.metapackage_20250331.smpkg.zb
