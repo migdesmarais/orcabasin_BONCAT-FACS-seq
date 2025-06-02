@@ -22,7 +22,7 @@ bowtie2-build all_MAGs_unique.fa all_MAGs_index
 ```
 mkdir -p /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/MAG_mapping_logs
 
-for R1 in /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/*_paired_R1.fastq.gz; do
+for R1 in /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads/*_clean_R1.fastq.gz; do
   R2=${R1/_R1/_R2}
   SAMPLE=$(basename "$R1" | grep -oE 'OB[0-9]+|OBNC')
 
@@ -34,7 +34,6 @@ for R1 in /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/*_paired_R1.fastq.gz; do
     -S "/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/MAG_mapping_sam/${SAMPLE}_vs_MAGs.sam" \
     2> "/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/MAG_mapping_logs/${SAMPLE}_bowtie2.log"
 done
-
 ```
 
 ## Conver SAM to BAM
