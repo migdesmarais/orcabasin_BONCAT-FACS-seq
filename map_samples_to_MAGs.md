@@ -63,8 +63,14 @@ coverm genome \
   --min-read-percent-identity 95 \
   --min-read-aligned-percent 75 \
   --output-file coverm_abundance.tsv
-```
 
+coverm genome \
+  --bam-files /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/MAG_mapping_sam/*.bam \
+  --genome-fasta-directory /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/renamed_mags \
+  --threads 12 \
+  --methods relative_abundance \
+  --output-file coverm_abundance.tsv
+```
 
 
 
