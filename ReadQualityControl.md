@@ -18,17 +18,6 @@ done
 ln -s /data_store/seq_data/igm_20250307_miguel_cat/merged_OB/* /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/raw_data/
 ```
 
-## Install graftM on conda environment
-```
-git clone https://github.com/geronimp/graftM
-cd graftM
-conda env create -n graftM -f graftm.yml
-conda activate graftM
-cd bin
-export PATH=$PWD:$PATH
-graftM -h
-```
-
 ## Install trimmomatic
 ```
 conda create --name trimmomatic_env 
@@ -137,6 +126,55 @@ for f in *_paired_*.fastq.gz; do
 done
 ```
 
+## Check taxonomy of reads
+```
+mkdir -p kraken
+shopt -s nullglob
+
+# get unique sample IDs without the lane/_paired bits
+samples=$(ls *_paired_R1.fastq.gz | sed -E 's/_L[0-9]{3}_paired_R1\.fastq\.gz$//; s/_paired_R1\.fastq\.gz$//' | sort -u)
+
+for s in $samples; do
+  echo ">> Combining $s"
+
+  # gather all R1/R2 lane files for this sample (e.g., L001, L002, L003…)
+  r1=(${s}_L*_paired_R1.fastq.gz ${s}_paired_R1.fastq.gz)
+  r2=(${s}_L*_paired_R2.fastq.gz ${s}_paired_R2.fastq.gz)
+
+  # combine (concatenate gzip streams safely)
+  cat "${r1[@]}" > "kraken/${s}_R1.combined.fastq.gz"
+  cat "${r2[@]}" > "kraken/${s}_R2.combined.fastq.gz"
+done
+
+
+
+
+
+conda activate kraken_env
+
+for fq in *_combined.fastq.gz; do
+    sample=$(basename "$fq" .fastq.gz)
+
+    kraken2 --db /data_store/kraken_database \
+            --gzip-compressed \
+            --output - \
+            --use-names \
+            "$fq" | sed "s/^/${sample}\t/" >> all_samples.kraken
+done
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
 ## Remove contaminants found in OBNC from the other reads and place in clean_reads folder
 ## Map samples reads to OBNC contigs
 ```
@@ -227,4 +265,30 @@ for fq in *_combined.fastq.gz; do
 done
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Install graftM on conda environment
+```
+git clone https://github.com/geronimp/graftM
+cd graftM
+conda env create -n graftM -f graftm.yml
+conda activate graftM
+cd bin
+export PATH=$PWD:$PATH
+graftM -h
+```
+
 
