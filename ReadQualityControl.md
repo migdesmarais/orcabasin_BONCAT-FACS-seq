@@ -350,9 +350,6 @@ awk -F'\t' -v hp="$HP" '{
 }' "$REP" | sort -nr | head -30
 ```
 
-
-
-
 # 1) Start contaminants reference (human + PhiX + UniVec)
 # Download contaminant refs & index
 ```
@@ -398,14 +395,11 @@ bbmap.sh -Xmx32g t="$THREADS" ref="$REFDIR/contaminants_plusOBNC.fa" \
   in1="$R1" in2="$R2" \
   outu1="$OUTDIR/${S}_clean_R1.fq.gz" \
   outu2="$OUTDIR/${S}_clean_R2.fq.gz" \
-  outm="$OUTDIR/${S}_contam.sam.gz" \
+  outm1="$OUTDIR/${S}_contam_R1.fq.gz" \
+  outm2="$OUTDIR/${S}_contam_R2.fq.gz" \
   minid=0.99 maxindel=3 ambiguous=best pairedonly=t \
   statsfile="$OUTDIR/stats/${S}.bbmap.stats" \
   2> "$OUTDIR/logs/${S}.bbmap.log"
-
-# FASTQs of the removed pairs
-reformat.sh in="$OUTDIR/${S}_contam.sam.gz" \
-  out1="$OUTDIR/${S}_contam_R1.fq.gz" out2="$OUTDIR/${S}_contam_R2.fq.gz"
 
 bbmap.sh -Xmx32g t="$THREADS" ref="$REFDIR/contaminants_plusOBNC.fa" \
   in1="$R1" in2="$R2" \
@@ -413,7 +407,7 @@ bbmap.sh -Xmx32g t="$THREADS" ref="$REFDIR/contaminants_plusOBNC.fa" \
   outu2="$OUTDIR/${S}_clean_R2.fq.gz" \
   outm1="$OUTDIR/${S}_contam_R1.fq.gz" \
   outm2="$OUTDIR/${S}_contam_R2.fq.gz" \
-  minid=0.99 maxindel=3 ambiguous=best pairedonly=t \
+  minid=0.98 maxindel=3 ambiguous=best pairedonly=f \
   statsfile="$OUTDIR/stats/${S}.bbmap.stats" \
   2> "$OUTDIR/logs/${S}.bbmap.log"
 
