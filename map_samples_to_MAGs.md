@@ -20,6 +20,66 @@ conda activate bowtie2_env2
 bowtie2-build all_MAGs_unique.fa all_MAGs_index
 ```
 
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- paths ---
+BASE=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ
+READS_DIR=$BASE/reads
+OUT=$BASE/magmap_out
+THREADS=12
+
+INDEX_DIR=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/renamed_mags/all_MAGs
+IDX=$INDEX_DIR/all_MAGs_index                # bowtie2 index prefix (no .bt2)
+FASTAS=$INDEX_DIR/all_MAGs_unique.fna       # concatenated MAGs FASTA
+REF=$FASTAS                                 # use this in calmd
+
+mkdir -p "$OUT"/{logs,bam,counts}
+
+# ensure reference FASTA index exists
+[ -s "$REF" ] || { echo "REF FASTA not found: $REF"; exit 1; }
+[ -s "${REF}.fai" ] || samtools faidx "$REF"
+
+# --- map all samples ---
+for R1 in "$READS_DIR"/*_paired_R1.fastq.gz; do
+  [ -e "$R1" ] || { echo "No R1 files found in $READS_DIR"; exit 1; }
+  R2=${R1/_paired_R1/_paired_R2}
+  [[ -e "$R2" ]] || { echo "Missing mate for $R1"; exit 1; }
+
+  SAMPLE=$(basename "$R1" | sed -E 's/_paired_R1\.fastq\.gz$//' | grep -oE 'OBNC|OB[0-9]+|[A-Za-z0-9._-]+')
+  echo "== Mapping $SAMPLE"
+
+  bowtie2 --very-sensitive -p "$THREADS" \
+    --no-unal --no-mixed --no-discordant -k 1 \
+    -x "$IDX" -1 "$R1" -2 "$R2" \
+    2> "$OUT/logs/${SAMPLE}_bowtie2.log" \
+  | samtools view -b -q 30 -F 4 -F 256 -F 2048 \
+  | samtools sort -@ "$THREADS" -o "$OUT/bam/${SAMPLE}.q30.primary.bam"
+
+  samtools index "$OUT/bam/${SAMPLE}.q30.primary.bam"
+
+  # add MD/NM tags so CoverM can enforce %ID
+  samtools calmd -bAr "$OUT/bam/${SAMPLE}.q30.primary.bam" "$REF" > "$OUT/bam/${SAMPLE}.tmp.bam"
+  mv -f "$OUT/bam/${SAMPLE}.tmp.bam" "$OUT/bam/${SAMPLE}.q30.primary.bam"
+  samtools index "$OUT/bam/${SAMPLE}.q30.primary.bam"
+
+  samtools idxstats "$OUT/bam/${SAMPLE}.q30.primary.bam" > "$OUT/counts/${SAMPLE}_idxstats.tsv"
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # set paths (adjust if yours differ)
 BASE=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ
 READS_DIR=$BASE/reads
