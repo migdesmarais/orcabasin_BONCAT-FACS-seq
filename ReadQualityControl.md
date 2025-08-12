@@ -179,7 +179,7 @@ conda activate bracken_env
 
 #genus
 DB=/data_store/kraken_database
-OUT=kraken_pfpplus
+OUT=kraken_clean
 BR=$OUT/bracken_genus
 mkdir -p "$BR"
 READLEN=150
@@ -284,19 +284,202 @@ for r1 in *"$R1SFX"; do
 done
 ```
 
-## 
+## DECONTAMNATE
 
+# Assemble OBNC reads
+```
+conda activate megahit
+
+megahit -1 OBNC_S54_L003_paired_R1.fastq.gz -2 OBNC_S54_L003_paired_R2.fastq.gz -o obnc_megahit --min-contig-len 1000
+```
+
+# Classify OBNC contigs with kraken
+```
+DB=/data_store/kraken_database
+THREADS=16
+CONF=0.2
+OUTDIR="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1/kraken_obnc"
+mkdir -p "$OUTDIR"
+shopt -s nullglob
+
+kraken2 --db "$DB" --threads "$THREADS" --use-names --confidence "$CONF" --report obnc_kraken.report --output obnc_kraken.out /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1/obnc_megahit/obnc_contigs.fa
+
+# check on reads
+REP="obnc_kraken.report"
+OUT="obnc_quick_summary.txt"
+
+# 1) Classified vs unclassified (from the .kraken reads file)
+awk 'BEGIN{c=0;u=0} $1=="C"{c++} $1=="U"{u++} END{
+  tot=c+u; printf "Reads: classified=%d  unclassified=%d  total=%d  pct_classified=%.2f%%\n",
+  c,u,tot,(tot?100.0*c/tot:0)}' obnc_kraken.out | tee "$OUT"
+
+# 2) Pull unclassified %, and % for human / PhiX / synthetic (UniVec) from the report
+awk -F"\t" '{
+  gsub(/^[ ]+/,"",$1); pct=$1+0; rank=$4; tax=$5
+  if(rank=="U"){u=pct}
+  if(tax==9606){h=pct}
+  if(tax==10847){p=pct}
+  if(tax==32630){s=pct}
+}
+END{
+  printf "Report: unclassified=%.2f%%  human(9606)=%.2f%%  phix(10847)=%.2f%%  synthetic(32630)=%.2f%%  total_contam_markers=%.2f%%\n",
+  u+0,h+0,p+0,s+0,(h+p+s)+0
+}' "$REP" | tee -a "$OUT"
+
+# 3) Top non-(human|phix|synthetic) taxa in OBNC (≥0.1%)
+echo -e "\nTop non-human/phix/synthetic taxa (>=0.1%):" | tee -a "$OUT"
+awk -F"\t" '{
+  gsub(/^[ ]+/,"",$1); pct=$1+0; rank=$4; tax=$5; name=$6
+  if(rank!="U" && tax!=9606 && tax!=10847 && tax!=32630 && pct>=0.1) {
+    printf "%6.2f%%\t%s\t%s\n", pct, tax, name
+  }
+}' "$REP" | sort -nr | head -30 | tee -a "$OUT"
+
+# 4) investigate further
+REP="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1/obnc_kraken.report"
+
+# Grab the human % to drop all ancestor nodes that inherit the same %.
+HP=$(awk -F'\t' '$5==9606{gsub(/^[ ]+/,"",$1); print $1; exit}' "$REP")
+
+# Top taxa excluding human, phiX, synthetic, unclassified, and human-ancestor nodes
+awk -F'\t' -v hp="$HP" '{
+  gsub(/^[ ]+/,"",$1); pct=$1+0; rank=$4; tax=$5; name=$6
+  if (rank!="U" && pct>=0.1 && tax!=9606 && tax!=10847 && tax!=32630 && pct!=hp) {
+    printf "%6.2f%%\t%-8s\t%s\n", pct, tax, name
+  }
+}' "$REP" | sort -nr | head -30
+```
+
+
+
+
+# 1) Start contaminants reference (human + PhiX + UniVec)
 # Download contaminant refs & index
+```
+conda activate bowtie2_env
+
 curl -L "https://www.ebi.ac.uk/ena/browser/api/fasta/NC_001422.1?download=true" -o phiX174.fa
 wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz
 gunzip -c hg38.fa.gz > GRCh38.fa
 wget https://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec_Core -O UniVec_Core.fa
 
-cat UniVec_Core.fa phiX174.fa > contaminants.fa
-bowtie2-build contaminants.fa contaminants_bt2
+cat UniVec_Core.fa phiX174.fa GRCh38.fa > contaminants.fa
+```
 
-# Assemble OBNC reads
-megahit -1 OBNC_S54_L003_paired_R1.fastq.gz -2 OBNC_S54_L003_paired_R2.fastq.gz -o obnc_megahit --min-contig-len 1000
+conda create -n bbtools -c conda-forge -c bioconda bbmap=39.* -y
+conda activate bbtools
+
+# ---- edit these paths ----
+THREADS=16
+READDIR="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads"
+OUTDIR="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1"
+REFDIR="${OUTDIR}/refs/contaminants"
+OBNC_CONTIGS="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1/obnc_megahit/obnc_contigs.fa"
+# --------------------------
+
+mkdir -p "$OUTDIR"/{logs,stats} "$REFDIR"
+
+# 1) Build one combined reference: Human + PhiX + UniVec + full OBNC contigs
+cat "$REFDIR/UniVec_Core.fa" "$REFDIR/phiX174.fa" "$REFDIR/GRCh38.fa" "$OBNC_CONTIGS" > "$REFDIR/contaminants_plusOBNC.fa"
+
+# pre-build/reuse the BBMap index (it gets cached; stay in same dir to reuse)
+bbmap.sh ref="$REFDIR/contaminants_plusOBNC.fa"
+
+
+
+
+Chunk 2 — run a single sample (test)
+# pick one sample
+R1="${READDIR}/OB129_S51_L003_paired_R1.fastq.gz"
+R2="${READDIR}/OB129_S51_L003_paired_R2.fastq.gz" 
+S=$(basename "$R1" | grep -oE 'OBNC|OB[0-9]+')
+
+bbmap.sh -Xmx32g t="$THREADS" ref="$REFDIR/contaminants_plusOBNC.fa" \
+  in1="$R1" in2="$R2" \
+  outu1="$OUTDIR/${S}_clean_R1.fq.gz" \
+  outu2="$OUTDIR/${S}_clean_R2.fq.gz" \
+  outm="$OUTDIR/${S}_contam.sam.gz" \
+  minid=0.99 maxindel=3 ambiguous=best pairedonly=t \
+  statsfile="$OUTDIR/stats/${S}.bbmap.stats" \
+  2> "$OUTDIR/logs/${S}.bbmap.log"
+
+# FASTQs of the removed pairs
+reformat.sh in="$OUTDIR/${S}_contam.sam.gz" \
+  out1="$OUTDIR/${S}_contam_R1.fq.gz" out2="$OUTDIR/${S}_contam_R2.fq.gz"
+
+bbmap.sh -Xmx32g t="$THREADS" ref="$REFDIR/contaminants_plusOBNC.fa" \
+  in1="$R1" in2="$R2" \
+  outu1="$OUTDIR/${S}_clean_R1.fq.gz" \
+  outu2="$OUTDIR/${S}_clean_R2.fq.gz" \
+  outm1="$OUTDIR/${S}_contam_R1.fq.gz" \
+  outm2="$OUTDIR/${S}_contam_R2.fq.gz" \
+  minid=0.99 maxindel=3 ambiguous=best pairedonly=t \
+  statsfile="$OUTDIR/stats/${S}.bbmap.stats" \
+  2> "$OUTDIR/logs/${S}.bbmap.log"
+
+# quick summary for this sample
+tot=$(zcat "$R1" | wc -l | awk '{print int($1/4)}')
+cln=$(zcat "$OUTDIR/${S}_clean_R1.fq.gz" | wc -l | awk '{print int($1/4)}')
+printf "%s\t%d\t%d\t%d\t%.2f%%\n" "$S" "$tot" "$cln" "$((tot-cln))" "$(awk -v a=$tot -v b=$cln 'BEGIN{print (a? (a-b)*100/a:0)}')"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ==== EDIT THESE IF NEEDED ====
+THREADS=12
+READDIR="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads"
+OUTDIR="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1"
+REFDIR="${OUTDIR}/refs/contaminants"
+OBNC_CONTIGS="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1/obnc_megahit/obnc_contigs.fa"
+KRAKEN_DB="/data_store/kraken_database"     # <-- set to your Kraken2 DB
+MAPQ=30                                  # raise to 40 if you want stricter
+WARN_PCT=10
+# =================================
+
+WORKDIR="${OUTDIR}/work_allinone"
+MAPDIR="${OUTDIR}/maps_allinone"
+LOGDIR="${OUTDIR}/logs"
+mkdir -p "$OUTDIR" "$WORKDIR" "$MAPDIR" "$LOGDIR" "$REFDIR"
+
+# 1) Curate OBNC contigs to ONLY obvious contaminants (human/PhiX/synthetic)
+echo "Classifying OBNC contigs..."
+kraken2 --db "$KRAKEN_DB" --threads "$THREADS" --confidence 0.25 --report "$WORKDIR/OBNC.report" --output "$WORKDIR/OBNC.kraken" "$OBNC_CONTIGS"
+
+  kraken2 --db "$DB" --threads "$THREADS" --paired --use-names --confidence "$CONF" \
+          --report "$REP" --output "$OUT" \
+          "$r1" "$r2"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #!/usr/bin/env bash
 set -euo pipefail
