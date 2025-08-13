@@ -401,6 +401,8 @@ bbmap.sh -Xmx32g t="$THREADS" ref="$REFDIR/contaminants_plusOBNC.fa" \
   statsfile="$OUTDIR/stats/${S}.bbmap.stats" \
   2> "$OUTDIR/logs/${S}.bbmap.log"
 
+  # only 2% removed???
+
 bbmap.sh -Xmx32g t="$THREADS" ref="$REFDIR/contaminants_plusOBNC.fa" \
   in1="$R1" in2="$R2" \
   outu1="$OUTDIR/${S}_clean_R1.fq.gz" \
@@ -415,6 +417,81 @@ bbmap.sh -Xmx32g t="$THREADS" ref="$REFDIR/contaminants_plusOBNC.fa" \
 tot=$(zcat "$R1" | wc -l | awk '{print int($1/4)}')
 cln=$(zcat "$OUTDIR/${S}_clean_R1.fq.gz" | wc -l | awk '{print int($1/4)}')
 printf "%s\t%d\t%d\t%d\t%.2f%%\n" "$S" "$tot" "$cln" "$((tot-cln))" "$(awk -v a=$tot -v b=$cln 'BEGIN{print (a? (a-b)*100/a:0)}')"
+
+
+
+
+
+
+
+
+
+
+### BBDUK
+conda activate bbtools
+
+THREADS=16
+READDIR="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads"
+OUTDIR="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1"
+REFDIR="${OUTDIR}/refs/contaminants"
+
+mkdir -p "$OUTDIR"/{logs,stats} "$REFDIR"
+
+S=OB129
+OBNC_R1="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/OBNC_S54_L003_paired_R1.fastq.gz"
+OBNC_R2="/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/reads/OBNC_S54_L003_paired_R2.fastq.gz"
+R1="${READDIR}/OB129_S51_L003_paired_R1.fastq.gz"
+R2="${READDIR}/OB129_S51_L003_paired_R2.fastq.gz"
+
+bbduk.sh prealloc=t t=16 \
+  in1="$R1" in2="$R2" \
+  outu1="$OUTDIR/${S}_noblank_R1.fq.gz"  outu2="$OUTDIR/${S}_noblank_R2.fq.gz" \
+  outm1="$OUTDIR/${S}_blankmatch_R1.fq.gz" outm2="$OUTDIR/${S}_blankmatch_R2.fq.gz" \
+  ref="$OBNC_R1,$OBNC_R2" \
+  k=31 hdist=1 ziplevel=1 ow=t \
+  stats="$OUTDIR/stats/${S}.bbduk.blank.stats" \
+  refstats="$OUTDIR/stats/${S}.bbduk.blank.refstats" \
+  2> "$OUTDIR/logs/${S}.bbduk.blank.log"
+
+
+
+
+
+
+
+bbduk.sh prealloc=t t=16 \
+  in1="$R1" in2="$R2" \
+  outu1="$OUTDIR/${S}_noblank_R1.fq.gz"  outu2="$OUTDIR/${S}_noblank_R2.fq.gz" \
+  outm1="$OUTDIR/${S}_blankmatch_R1.fq.gz" outm2="$OUTDIR/${S}_blankmatch_R2.fq.gz" \
+  ref="$OBNC_R1,$OBNC_R2" k=31 hdist=1 ziplevel=1 ow=t \
+  stats="$OUTDIR/stats/${S}.bbduk.blank.stats" \
+  refstats="$OUTDIR/stats/${S}.bbduk.blank.refstats" \
+  2> "$OUTDIR/logs/${S}.bbduk.blank.log"
+
+
+bbduk.sh -Xmx64g in1="$R1" in2="$R2" \
+  outu1="$OUTDIR/${S}_noblank_R1.fq.gz"  outu2="$OUTDIR/${S}_noblank_R2.fq.gz" \
+  outm1="$OUTDIR/${S}_blankmatch_R1.fq.gz" outm2="$OUTDIR/${S}_blankmatch_R2.fq.gz" \
+  ref="$OBNC_R1,$OBNC_R2" k=31 mink=21 hdist=1 tpe tbo ziplevel=1 \
+  stats="$OUTDIR/stats/${S}.bbduk.blank.stats" \
+  2> "$OUTDIR/logs/${S}.bbduk.blank.log"
+
+
+
+
+
+# then polish with mapping (human+PhiX+UniVec+OBNC)
+bbmap.sh -Xmx32g t=16 ref="$REFDIR/contaminants_plusOBNC.fa" \
+  in1="$OUTDIR/${S}_noblank_R1.fq.gz" in2="$OUTDIR/${S}_noblank_R2.fq.gz" \
+  outu1="$OUTDIR/${S}_clean_R1.fq.gz"  outu2="$OUTDIR/${S}_clean_R2.fq.gz" \
+  outm1="$OUTDIR/${S}_contam_R1.fq.gz" outm2="$OUTDIR/${S}_contam_R2.fq.gz" \
+  minid=0.985 pairedonly=f maxindel=3 ziplevel=1 \
+  statsfile="$OUTDIR/stats/${S}.bbmap.final.stats" \
+  2> "$OUTDIR/logs/${S}.bbmap.final.log"
+
+
+
+
 
 
 
