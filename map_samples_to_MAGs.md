@@ -20,6 +20,8 @@ conda activate bowtie2_env2
 bowtie2-build all_MAGs_unique.fa all_MAGs_index
 ```
 
+## Use samtools to map reads to MAGs
+```
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -28,7 +30,6 @@ BASE=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ
 READS_DIR=$BASE/reads
 OUT=$BASE/magmap_out
 THREADS=12
-
 INDEX_DIR=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/renamed_mags/all_MAGs
 IDX=$INDEX_DIR/all_MAGs_index                # bowtie2 index prefix (no .bt2)
 FASTAS=$INDEX_DIR/all_MAGs_unique.fna       # concatenated MAGs FASTA
@@ -65,52 +66,50 @@ for R1 in "$READS_DIR"/*_paired_R1.fastq.gz; do
 
   samtools idxstats "$OUT/bam/${SAMPLE}.q30.primary.bam" > "$OUT/counts/${SAMPLE}_idxstats.tsv"
 done
+```
 
+# 1. Verify MD/NM tags
+CoverM needs NM (edit distance) and MD (mismatch string) tags in the BAMs.
+```
+# Test one BAM
+samtools view -h $OUT/bam/OB129_S51_L003.q30.primary.bam | grep -m1 -E "NM:i|MD:Z" || echo "No tags found"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# set paths (adjust if yours differ)
-BASE=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ
-READS_DIR=$BASE/reads
-OUT=$BASE/magmap_out
-THREADS=12
-
-INDEX_DIR=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/renamed_mags/all_MAGs
-IDX=$INDEX_DIR/all_MAGs_index              # prefix only, no .bt2
-FASTAS=$INDEX_DIR/all_MAGs_unique.fna     # concatenated MAGs fasta
-
-mkdir -p "$OUT"/{logs,bam,counts}
-
-for R1 in "$READS_DIR"/*_paired_R1.fastq.gz; do
-  R2=${R1/_R1/_R2}; [[ -e "$R2" ]] || { echo "Missing mate for $R1"; exit 1; }
-  SAMPLE=$(basename "$R1" | sed -E 's/_R1\.fastq\.gz$//' | grep -oE 'OBNC|OB[0-9]+|[A-Za-z0-9._-]+')
-  echo "== Mapping $SAMPLE"
-
-  bowtie2 --very-sensitive -p "$THREADS" \
-    --no-unal --no-mixed --no-discordant -k 1 \
-    -x "$IDX" -1 "$R1" -2 "$R2" \
-    2> "$OUT/logs/${SAMPLE}_bowtie2.log" \
-  | samtools view -b -q 30 -F 4 -F 256 -F 2048 \
-  | samtools sort -@ "$THREADS" -o "$OUT/bam/${SAMPLE}.q30.primary.bam"
-  samtools index "$OUT/bam/${SAMPLE}.q30.primary.bam"
-
-  samtools calmd -bAr "$OUT/bam/${SAMPLE}.q30.primary.bam" "$REF" > "$OUT/bam/${SAMPLE}.tmp.bam"
-  mv "$OUT/bam/${SAMPLE}.tmp.bam" "$OUT/bam/${SAMPLE}.q30.primary.bam"
-  samtools index "$OUT/bam/${SAMPLE}.q30.primary.bam"
-
-  samtools idxstats "$OUT/bam/${SAMPLE}.q30.primary.bam" > "$OUT/counts/${SAMPLE}_idxstats.tsv"
+# If missing, add them to all BAMs
+for bam in $OUT/bam/*.bam; do
+  samtools calmd -bAr "$bam" $FASTAS > "${bam%.bam}.tmp.bam"
+  mv "${bam%.bam}.tmp.bam" "$bam"
 done
+```
+
+# Run CoverM for per-MAG coverage
+
+coverm genome \
+  --bam-files $OUT/bam/*.bam \
+  --genome-fasta-directory $INDEX_DIR \
+  --methods covered_bases rpkm relative_abundance \
+  --min-read-percent-identity 95 \
+  --min-read-aligned-percent 75 \
+  --output-file $OUT/mag_coverage_summary.tsv \
+  --threads 12
+
+  ## MAG abundance - coverM
+```
+coverm genome \
+  --bam-files /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/magmap_out/bam/*.bam \
+  --genome-fasta-directory /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/renamed_mags \
+  --methods covered_bases rpkm relative_abundance \
+  --min-read-percent-identity 95 \
+  --min-read-aligned-percent 75 \
+  --output-file /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/magmap_out/mag_coverage_summary.tsv
+  --threads 12
+
+coverm genome \
+  --bam-files /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/MAG_mapping_sam/*.bam \
+  --genome-fasta-directory /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/renamed_mags \
+  --threads 12 \
+  --methods relative_abundance \
+  --output-file coverm_abundance.tsv
+```
 
 
 
@@ -121,32 +120,18 @@ done
 
 
 
-# pick one sample to test
-R1="$READS_DIR"/OB129_S51_L003_paired_R1.fastq.gz
-R2="$READS_DIR"/OB129_S51_L003_paired_R2.fastq.gz
-SAMPLE=$(basename "$R1" | sed -E 's/_R1\.fastq\.gz$//' | grep -oE 'OBNC|OB[0-9]+|[A-Za-z0-9._-]+')
-echo "Testing $SAMPLE"
 
-# competitive mapping → primary, high-confidence alignments only
-bowtie2 --very-sensitive -p "$THREADS" \
-  --no-unal --no-mixed --no-discordant \
-  -k 1 \
-  -x "$IDX" \
-  -1 "$R1" -2 "$R2" \
-  2> "$OUT/logs/${SAMPLE}_bowtie2.log" \
-| samtools view -b -q 30 -F 4 -F 256 -F 2048 \
-| samtools sort -@ "$THREADS" -o "$OUT/bam/${SAMPLE}.q30.primary.bam"
 
-samtools index "$OUT/bam/${SAMPLE}.q30.primary.bam"
 
-# add MD/NM tags so CoverM’s %ID filter works
-samtools calmd -bAr "$OUT/bam/${SAMPLE}.q30.primary.bam" "$FASTAS" > "$OUT/bam/${SAMPLE}.tmp.bam"
-mv "$OUT/bam/${SAMPLE}.tmp.bam" "$OUT/bam/${SAMPLE}.q30.primary.bam"
-samtools index "$OUT/bam/${SAMPLE}.q30.primary.bam"
 
-# quick sanity checks
-grep -E "overall alignment rate|No alignments" "$OUT/logs/${SAMPLE}_bowtie2.log"
-samtools idxstats "$OUT/bam/${SAMPLE}.q30.primary.bam" | head
+
+
+
+
+
+
+
+
 
 
 
