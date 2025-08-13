@@ -427,6 +427,37 @@ printf "%s\t%d\t%d\t%d\t%.2f%%\n" "$S" "$tot" "$cln" "$((tot-cln))" "$(awk -v a=
 
 
 
+BASE=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ
+REF=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1/refs/contaminants/contaminants_plusOBNC.fa
+IDX=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1/refs/contaminants/contaminants_relaxed_v1
+OUT=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/clean_reads1/clean_reads_relaxed
+
+mkdir -p "$OUT"/{logs,stats} "$IDX"
+
+# Build index once
+bbmap.sh ref="$REF" path="$IDX" build=1 \
+  2> "$OUT/logs/index_build.log"
+
+S=OB129_S51
+R1=$BASE/reads/OB129_S51_L003_paired_R1.fastq.gz
+R2=$BASE/reads/OB129_S51_L003_paired_R2.fastq.gz
+
+bbmap.sh -Xmx64g threads=16 path="$IDX" \
+  in1="$R1" in2="$R2" \
+  outu1="$OUT/${S}_noblank_R1.fq.gz" outu2="$OUT/${S}_noblank_R2.fq.gz" \
+  outm1="$OUT/${S}_contam_R1.fq.gz"  outm2="$OUT/${S}_contam_R2.fq.gz" \
+  minid=0.90 maxindel=100 local=t \
+  qtrim=rl trimq=15 untrim ambiguous=best pairedonly=f \
+  statsfile="$OUT/stats/${S}.bbmap.stats" \
+  scafstats="$OUT/stats/${S}.bbmap.scafstats.txt" \
+  2> "$OUT/logs/${S}.bbmap.log"
+
+
+
+
+
+
+
 ### BBDUK
 conda activate bbtools
 
