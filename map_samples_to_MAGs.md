@@ -83,16 +83,6 @@ done
 
 # Run CoverM for per-MAG coverage
 
-coverm genome \
-  --bam-files $OUT/bam/*.bam \
-  --genome-fasta-directory $INDEX_DIR \
-  --methods covered_bases rpkm relative_abundance \
-  --min-read-percent-identity 95 \
-  --min-read-aligned-percent 75 \
-  --output-file $OUT/mag_coverage_summary.tsv \
-  --threads 12
-
-  ## MAG abundance - coverM
 ```
 coverm genome \
   --bam-files /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/magmap_out/bam/*.bam \
@@ -102,14 +92,12 @@ coverm genome \
   --min-read-aligned-percent 75 \
   --output-file /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/magmap_out/mag_coverage_summary.tsv
   --threads 12
-
-coverm genome \
-  --bam-files /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/MAG_mapping_sam/*.bam \
-  --genome-fasta-directory /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/renamed_mags \
-  --threads 12 \
-  --methods relative_abundance \
-  --output-file coverm_abundance.tsv
 ```
+
+# Run GTDB-tk on derep MAGs
+
+conda activate gtdbtk_env
+export GTDBTK_DATA_PATH=/data_store/gtdbtk_db/release226
 
 
 
