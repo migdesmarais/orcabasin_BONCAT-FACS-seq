@@ -96,8 +96,49 @@ coverm genome \
 
 # Run GTDB-tk on derep MAGs
 
+```
+# activate env if needed
 conda activate gtdbtk_env
-export GTDBTK_DATA_PATH=/data_store/gtdbtk_db/release226
+
+# point to your GTDB data release (adjust if different)
+export GTDBTK_DATA_PATH=~/gtdbtk_db/release226
+
+# create a scratch/tmp directory
+mkdir -p /scratch/mdesmarais/tmp_gtdbtk
+
+# run classify_wf (GTDB-Tk will CREATE the mash file at the path you give)
+gtdbtk classify_wf \
+  --genome_dir /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/renamed_mags \
+  --out_dir   /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dereplicated_genomes/gtdbtk \
+  --extension fna \
+  --cpus 16 --pplacer_cpus 16 \
+  --tmpdir /scratch/mdesmarais/tmp_gtdbtk \
+  --mash_db /scratch/mdesmarais/gtdbtk_mash.msh
+```
+
+
+
+
+
+
+
+
+
+
+
+
+conda activate gtdbtk_env
+export GTDBTK_DATA_PATH=~/gtdbtk_db/release226
+mkdir -p /scratch/mdesmarais/tmp_gtdbtk
+
+gtdbtk infer \
+  --genome_dir /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/magmap_out/active_mags_short \
+  --out_dir   /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/magmap_out/active_mags_short/gtdbtk_infer \
+  --extension fna \
+  --cpus 16 \
+  --tmp_dir /scratch/mdesmarais/tmp_gtdbtk
+
+
 
 
 
