@@ -420,6 +420,35 @@ printf "%s\t%d\t%d\t%d\t%.2f%%\n" "$S" "$tot" "$cln" "$((tot-cln))" "$(awk -v a=
 
 
 
+## Seal
+# Paths
+BASE=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ
+READS=$BASE/reads
+REF=$BASE/clean_reads1/refs/contaminants/contaminants_plusOBNC_withReads.fa
+OUT=$BASE/clean_reads1/seal_out
+mkdir -p "$OUT"/{logs,stats,paired,unpaired}
+shopt -s nullglob
+
+
+# === OB129 only (matches OB129_S* across lanes) ===
+S=OB129
+
+# Gather paired lanes
+r1=( "$READS/${S}"*_paired_R1.fastq.gz )
+r2=( "$READS/${S}"*_paired_R2.fastq.gz )
+R1_LIST=$(IFS=, ; echo "${r1[*]}")
+R2_LIST=$(IFS=, ; echo "${r2[*]}")
+
+echo "Paired inputs:"
+printf '  %s\n' "${r1[@]}" "${r2[@]}"
+
+seal.sh -Xmx40g threads=16 \
+  in1="$R1_LIST" in2="$R2_LIST" \
+  outm1="$OUT/${S}_contam_R1.fq.gz" outm2="$OUT/${S}_contam_R2.fq.gz" \
+  outu1="$OUT/${S}_clean_R1.fq.gz"  outu2="$OUT/${S}_clean_R2.fq.gz" \
+  ref="$REF" k=31 hdist=1 rcomp=t overwrite=t \
+  stats="$OUT/stats/${S}.paired.seal.stats" \
+  2> "$OUT/logs/${S}.paired.seal.log"
 
 
 
