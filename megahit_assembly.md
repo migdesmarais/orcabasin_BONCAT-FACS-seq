@@ -17,19 +17,53 @@ nano run_megahit_all.sh
 
 ## Script:
 ```
-for r1 in *_R1.fastq.gz; do
-  base=$(echo "$r1" | sed 's/_R1.fastq.gz//')
-  r2="${base}_R2.fastq.gz"
-  outdir="megahit_assemblies/${base}"
+#!/usr/bin/env bash
+set -euo pipefail
 
-  echo "Assembling $base..."
+# where to write assemblies
+OUTROOT="megahit"
+mkdir -p "$OUTROOT"
+
+# tweak these if you like
+THREADS=20
+MINLEN=1000       # min contig length to report
+PRESET="meta-sensitive"
+
+shopt -s nullglob
+for R1 in *_paired_R1.fastq.gz; do
+  base="${R1%_paired_R1.fastq.gz}"
+  R2="${base}_paired_R2.fastq.gz"
+  outdir="${OUTROOT}/${base}"
+  log="${outdir}.log"
+
+  # sanity: make sure R2 exists
+  if [[ ! -f "$R2" ]]; then
+    echo "[SKIP] $base – missing $R2" | tee -a "$log"
+    continue
+  fi
+
+  # resume if assembly already done
+  if [[ -s "${outdir}/final.contigs.fa" ]]; then
+    echo "[DONE] $base – ${outdir}/final.contigs.fa exists" | tee -a "$log"
+    continue
+  fi
+
+  echo "[RUN ] Assembling $base → $outdir" | tee "$log"
   megahit \
-    -1 "$r1" \
-    -2 "$r2" \
+    -1 "$R1" \
+    -2 "$R2" \
     -o "$outdir" \
-    --min-contig-len 1000 \
-    --presets meta-sensitive \
-    --num-cpu-threads 20
+    --min-contig-len "$MINLEN" \
+    --presets "$PRESET" \
+    --num-cpu-threads "$THREADS" \
+    >>"$log" 2>&1
+
+  # quick post-check
+  if [[ -s "${outdir}/final.contigs.fa" ]]; then
+    echo "[OK  ] $base – contigs: $(grep -c '^>' "${outdir}/final.contigs.fa")" | tee -a "$log"
+  else
+    echo "[FAIL] $base – contigs file missing/empty" | tee -a "$log"
+  fi
 done
 ```
 ## Make it executable
