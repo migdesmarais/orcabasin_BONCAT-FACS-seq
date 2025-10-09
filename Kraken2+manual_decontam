@@ -84,6 +84,44 @@ for R1 in "${R1S[@]}"; do
 done
 
 
+# Run Bracken
+```
+############################################
+# LOOP 2-3 — BRACKEN (GENUS/PHYLUM) FOR ALL
+############################################
+# --- config ---
+DB=/scratch/mdesmarais/kraken_gtdb_r226_128g
+OUT=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/kraken_gtdbtk
+THREADS=24
+READLEN=150
+export LC_ALL=C.UTF-8 LANG=C.UTF-8
+mkdir -p "$OUT/bracken" "$OUT/logs"
+
+# ===== LOOP A: Bracken GENUS for all kreports =====
+for KREP in "$OUT"/kraken/*.kreport; do
+  S=$(basename "$KREP" .kreport)
+  OUTTXT="$OUT/bracken/${S}.bracken_genus.txt"
+  [[ -s "$OUTTXT" ]] && { echo "[skip] genus $S"; continue; }
+  echo "[run] genus $S"
+  bracken -d "$DB" -i "$KREP" -o "$OUTTXT" \
+          -w "${OUTTXT%.txt}.report" -r "$READLEN" -l G -t 10 \
+          2> "$OUT/logs/${S}.bracken_genus.stderr"
+done
+
+# ===== LOOP B: Bracken PHYLUM for all kreports =====
+mkdir -p "$OUT/bracken" "$OUT/logs"
+
+for KREP in "$OUT"/kraken/*.kreport; do
+  S=$(basename "$KREP" .kreport)
+  OUTTXT="$OUT/bracken/${S}.bracken_phylum.txt"
+
+  [[ -s "$OUTTXT" ]] && { echo "[skip] phylum $S"; continue; }
+
+  echo "[run] phylum $S"
+  bracken -d "$DB" -i "$KREP" -o "$OUTTXT" \
+          -w "${OUTTXT%.txt}.report" -r "$READLEN" -l P -t 10 \
+          2> "$OUT/logs/${S}.bracken_phylum.stderr"
+done
 
 
 
