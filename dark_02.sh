@@ -50,3 +50,41 @@ cat \
   NOD_all_68_proteins.faa \
   > phylogeny/NOD_QNOR_ORCA_combined.faa
 
+# then run iqtree, lost command
+
+
+
+# NLD
+#?
+mkdir -p phylogeny
+
+(
+  set -euo pipefail
+  for pdb in 3Q08 3NN1 3QPI 4WWS; do
+    curl -fsSL "https://www.rcsb.org/fasta/entry/$pdb/display" \
+      -o "phylogeny/${pdb}.fasta"
+    awk -v label="REF_${pdb}" '
+      /^>/ { if (++n > 1) exit; print ">" label; next }
+      n == 1 { print }
+    ' "phylogeny/${pdb}.fasta" > "phylogeny/${pdb}_one.faa"
+    grep -q '^[A-Za-z]' "phylogeny/${pdb}_one.faa"
+  done
+
+  cat phylogeny/{3Q08,3NN1,3QPI,4WWS}_one.faa \
+    CLD_all_hit_proteins.faa > phylogeny/CLD_ORCA_combined.faa
+
+  grep -c '^>' phylogeny/CLD_ORCA_combined.faa
+  mafft --auto --thread 8 phylogeny/CLD_ORCA_combined.faa \
+    > phylogeny/CLD_ORCA_aligned.faa
+)
+
+cd /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dark_oxygen
+conda activate dark_oxygen_hmmer
+command -v iqtree2
+conda install -n dark_oxygen_hmmer -c conda-forge -c bioconda iqtree -y &&
+conda activate dark_oxygen_hmmer &&
+cd /scratch/mdesmarais/OB_BONCAT-FACS-SEQ/dark_oxygen &&
+IQTREE=$(command -v iqtree2 || command -v iqtree) &&
+"$IQTREE" -s phylogeny/CLD_ORCA_aligned.faa \
+  -m MFP -B 1000 --alrt 1000 -T 8 \
+  --prefix phylogeny/CLD_ORCA
