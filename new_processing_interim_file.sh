@@ -83,3 +83,71 @@ bracken-build -d "$NEW_DB" -x "$kraken_bin" -t 8 -k 35 -l 150
 test -s "$NEW_DB/database150mers.kmer_distrib"
 echo "Kraken2 and Bracken builds finished"
 ) 2>&1 | tee "$NEW_DB/build.log"
+
+# rerun Kraken2 on all with new database
+screen -S OB_kraken2_v2
+
+conda activate kraken2_env
+cd /scratch/mdesmarais/OB_BONCAT-FACS-SEQ
+
+DB=/scratch/mdesmarais/kraken_gtdb_r226_128g_v2
+OUT=kraken2_results_r226_v2
+T0_IN=
+
+for d in T0_reads/trimmed_20M T0_reads/trimmed; do
+    if [[ -d "$d" ]] && compgen -G "$d/*_R1.fastq.gz" >/dev/null; then
+        T0_IN="$d"
+        break
+    fi
+done
+
+if [[ -z "$T0_IN" ]]; then
+    echo "Can't find trimmed T0 read pairs. Stopping before running Kraken2."
+    exit 1
+fi
+
+for f in hash.k2d opts.k2d taxo.k2d database150mers.kmer_distrib; do
+    if [[ ! -s "$DB/$f" ]]; then
+        echo "Missing database file: $DB/$f"
+        exit 1
+    fi
+done
+
+mkdir -p "$OUT"/{T0,ALL,BON}/{reports,logs}
+shopt -s nullglob
+
+T0_R1=("$T0_IN"/*_R1.fastq.gz)
+ALL_R1=(mapping_reads/*_ALL_R1.fastq.gz)
+BON_R1=(mapping_reads/*_BON_R1.fastq.gz)
+
+echo "T0 input: $T0_IN — ${#T0_R1[@]} pairs"
+echo "ALL: ${#ALL_R1[@]} pairs"
+echo "BON: ${#BON_R1[@]} pairs"
+echo "Reports and logs: $OUT"
+
+run_kraken () {
+    local r1="$1"
+    local group="$2"
+    local r2="${r1%_R1.fastq.gz}_R2.fastq.gz"
+    local sample="${r1##*/}"
+    sample="${sample%_R1.fastq.gz}"
+
+    if [[ ! -s "$r1" || ! -s "$r2" ]]; then
+        echo "Missing mate for $r1; stopping."
+        return 1
+    fi
+
+    echo "Starting $group / $sample — $(date)"
+    kraken2 --db "$DB" --threads 8 --paired "$r1" "$r2" \
+        --report "$OUT/$group/reports/$sample.kreport" \
+        --output /dev/null 2>&1 | tee "$OUT/$group/logs/$sample.log"
+    echo "Finished $group / $sample — $(date)"
+}
+
+for r1 in "${T0_R1[@]}"; do run_kraken "$r1" T0; done
+for r1 in "${ALL_R1[@]}"; do run_kraken "$r1" ALL; done
+for r1 in "${BON_R1[@]}"; do run_kraken "$r1" BON; done
+
+echo "All Kraken2 samples finished — $(date)"
+
+
