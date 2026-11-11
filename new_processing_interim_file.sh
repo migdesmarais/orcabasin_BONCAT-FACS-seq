@@ -150,4 +150,46 @@ for r1 in "${BON_R1[@]}"; do run_kraken "$r1" BON; done
 
 echo "All Kraken2 samples finished — $(date)"
 
+cd /scratch/mdesmarais/OB_BONCAT-FACS-SEQ
+conda activate bracken_env
+
+DB=/scratch/mdesmarais/kraken_gtdb_r226_128g_v2
+ROOT=/scratch/mdesmarais/OB_BONCAT-FACS-SEQ/kraken2_results_r226_v2
+
+test -s "$DB/database150mers.kmer_distrib" || { echo "Bracken distribution file missing"; exit 1; }
+
+mkdir -p "$ROOT"/bracken/{genus,phylum,logs}
+
+echo "Kraken reports by group:"
+for group in T0 ALL BON; do
+    count=$(find "$ROOT/$group/reports" -maxdepth 1 -type f -name '*.kreport' 2>/dev/null | wc -l)
+    echo "$group: $count reports"
+done
+
+set -euo pipefail
+
+for group in T0 ALL BON; do
+    for report in "$ROOT/$group/reports/"*.kreport; do
+        [[ -f "$report" ]] || continue
+        sample=$(basename "$report" .kreport)
+
+        echo "Bracken genus: $group / $sample"
+        bracken -d "$DB" -i "$report" \
+            -o "$ROOT/bracken/genus/${sample}.bracken.tsv" \
+            -r 150 -l G -t 10 \
+            2>&1 | tee "$ROOT/bracken/logs/${group}_${sample}_genus.log"
+
+        echo "Bracken phylum: $group / $sample"
+        bracken -d "$DB" -i "$report" \
+            -o "$ROOT/bracken/phylum/${sample}.bracken.tsv" \
+            -r 150 -l P -t 10 \
+            2>&1 | tee "$ROOT/bracken/logs/${group}_${sample}_phylum.log"
+
+        echo "Finished: $group / $sample"
+    done
+done
+
+echo "All Bracken runs finished."
+echo "Genus outputs:  $(find "$ROOT/bracken/genus" -type f -name '*.tsv' | wc -l)"
+echo "Phylum outputs: $(find "$ROOT/bracken/phylum" -type f -name '*.tsv' | wc -l)"
 
